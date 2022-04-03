@@ -1,85 +1,118 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
+
+import { db } from "../lib/firebase";
+import {
+    collection,
+    getDocs,
+    addDoc,
+    updateDoc,
+    doc,
+    deleteDoc,
+} from "firebase/firestore";
 
 import {
     MapContainer,
     TileLayer,
-    LayersControl,  
-    ZoomControl,   
+    LayersControl,
+    ZoomControl,
+    Marker,
+    Popup,
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 
-
-
 import "./Map.css";
 
-
-
 export default function Map() {
-    const location = [48.856613, 2.352222];
-    const zoom = 6;
-    const [map, setMap] = useState(null);
+    // entree de la db
+    const smokeSpotCollection = collection(db, "smoke_spot");
 
+    // const [newSpot, setNewSpot] = useState("")
+
+    // parametres de base
+    const location = [35.329523, 139.469281];
+    const zoom = 14;
+    const [map, setMap] = useState(null);
+    const [spots, setSpots] = useState([]);
+
+    const markerOptions = {
+        title: "MyLocation",
+        clickable: true,
+        draggable: true,
+    };
+
+    // design icone
+    delete L.Icon.Default.prototype._getIconUrl;
+    L.Icon.Default.mergeOptions({
+        iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
+        iconUrl: require("leaflet/dist/images/marker-icon.png"),
+        shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
+    });
+
+    // LECTURE DB ET AFFICHAGE SPOTS
+
+    useEffect(() => {
+        const getSpots = async (e) => {
+            const data = await getDocs(smokeSpotCollection);
+
+            // mappe à travers la data pour rendre les informations plus lisibles ...
+            setSpots(data.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
+
+            console.log("updated");
+            console.log(spots);
+        };
+        getSpots();
+
+        console.log("mounted");
+    }, [map]);
 
     useEffect(() => {
         if (!map) return;
 
-   
-
-
         // locate() permet de géolocaliser l'utilisateur
-
         // map.locate({
         //     setView: true,
-        //
         // });
 
-        // donne les coordonnées (lat long) du clic
+        // CREATION MARKER DOUBLE CLICK
+        const onMapClick = (e) => {
+            const timer = setTimeout(() => {
+                const marker = new L.marker(e.latlng, markerOptions);
 
-        // map.on("click", function (e) {
-        //     let coord = e.latlng;
-        //     let lat = coord.lat;
-        //     let lng = coord.lng;
+                marker.on("", function (event) {
+                    let marker = event.target;
+                    let { position } = marker.getLatLng();
+                    marker.setLatLng(new L.LatLng(position.lat, position.lng), {
+                        draggable: "true",
+                    });
+                    map.panTo(new L.LatLng(position.lat, position.lng));
+                });
 
-        //     // place le marqueur sur la carte
-        //     L.marker(e.latlng, {draggable:'true'} ).addTo(map);
-        //     L.bindPopup(
-        //         ` <div>
-        //    <p> ${lat}  </p>
-        //    <p>  ${lng}  </p>
-        //  </div> `
-        //     );
-        // });
+                // enregistrement du marker dans la DB
+                const creationSpotDB = async () => {
+                    addDoc(smokeSpotCollection, {
+                        commentaire: "",
+                        lat: marker._latlng.lat,
+                        lng: marker._latlng.lng,
+                    });
+                };
 
-        function onMapClick(e) {
-            let pos;
-           const  marker = new L.marker(e.latlng, {draggable:'true'});
-            marker.on('dragend', function(event){
-              let marker = event.target;
-              let {position} = marker.getLatLng();
-              pos = {position};
-              marker.setLatLng(new L.LatLng(position.lat, position.lng),{draggable:'true'});
-              map.panTo(new L.LatLng(position.lat, position.lng))
-            });
-              map.addLayer(marker);
-              marker.bindPopup(`<p> ${pos} </p>`).openPopup();
+                map.addLayer(marker);
+                creationSpotDB();
+                marker.bindPopup();
 
+                return () => clearTimeout(timer);
+            }, 100);
             // if(marker !== undefined){
             //     map.removeLayer(marker)
             // }
-          };
-
-        //   Stoppe le zoom en double click
-          map.doubleClickZoom.disable();
+        };
 
         //   ajoute le marker au double click
-          map.on('dblclick', onMapClick);
-
-
+        map.on("dblclick", onMapClick);
     }, [map]);
 
-    // Permet de changer le visuel de la map
-    const { BaseLayer } = LayersControl;
+    //  RETURN ******
 
     return (
         <div className="container">
@@ -93,16 +126,18 @@ export default function Map() {
             >
                 {/* LayersControl est le controleur qui change le visuel de la map */}
                 <LayersControl>
-                    {/* BaseLayer est une couche de la map */}
-                    <BaseLayer checked name="OpenStreetMap">
-                        <TileLayer
-                            attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-                            url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        />
-                        <ZoomControl position="bottomright" />
-                    </BaseLayer>
+                    <TileLayer
+                        attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                    />
+                    <ZoomControl position="bottomright" />
+
+                    {spots.map((e) => (
+                        <Marker position={[e.lat, e.lng]}>
+                            <Popup>{e.commentaire}</Popup>
+                        </Marker>
+                    ))}
                 </LayersControl>
-               
 
                 {/* GeoJson utilise une db pour placer des marqueurs */}
                 {/* <GeoJSON data={db} /> */}
