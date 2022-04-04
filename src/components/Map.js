@@ -1,11 +1,10 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState } from "react";
 
 import { db } from "../lib/firebase";
 import {
     collection,
     getDocs,
-    addDoc,
-    updateDoc,
+    addDoc,  
     doc,
     deleteDoc,
 } from "firebase/firestore";
@@ -13,10 +12,10 @@ import {
 import {
     MapContainer,
     TileLayer,
-    LayersControl,
     ZoomControl,
     Marker,
     Popup,
+    useMapEvents
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -35,12 +34,9 @@ export default function Map() {
     const [map, setMap] = useState(null);
     const [spots, setSpots] = useState([]);
 
-    const markerOptions = {
-        title: "MyLocation",
-        clickable: true,
-        draggable: true,
-    };
-
+    const [test, setTest] = useState("")
+    
+    
     // design icone
     delete L.Icon.Default.prototype._getIconUrl;
     L.Icon.Default.mergeOptions({
@@ -49,44 +45,44 @@ export default function Map() {
         shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
     });
 
-    // LECTURE DB ET AFFICHAGE SPOTS
-
     useEffect(() => {
         const getSpots = async (e) => {
             const data = await getDocs(smokeSpotCollection);
 
             // mappe à travers la data pour rendre les informations plus lisibles ...
             setSpots(data.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
-
-            console.log("updated");
-            console.log(spots);
         };
         getSpots();
+    },[])
 
-        console.log("mounted");
-    }, [map]);
 
+    // LECTURE DB ET AFFICHAGE SPOTS
     useEffect(() => {
         if (!map) return;
 
-        // locate() permet de géolocaliser l'utilisateur
-        // map.locate({
-        //     setView: true,
-        // });
 
+        // fetch db
+      
+
+       
         // CREATION MARKER DOUBLE CLICK
         const onMapClick = (e) => {
-            const timer = setTimeout(() => {
-                const marker = new L.marker(e.latlng, markerOptions);
+           
 
-                marker.on("", function (event) {
-                    let marker = event.target;
-                    let { position } = marker.getLatLng();
-                    marker.setLatLng(new L.LatLng(position.lat, position.lng), {
-                        draggable: "true",
-                    });
-                    map.panTo(new L.LatLng(position.lat, position.lng));
-                });
+            if (zoom !== 14) {
+            console.log(spots)
+            } else {
+             
+                let   marker = new L.marker(e.latlng);
+                
+                
+                  
+                // marker.on("", function (event) {
+                //     let marker = event.target;
+                //     let { position } = marker.getLatLng();
+                //     marker.setLatLng(new L.LatLng(position.lat, position.lng));
+                //     map.panTo(new L.LatLng(position.lat, position.lng));
+                // });
 
                 // enregistrement du marker dans la DB
                 const creationSpotDB = async () => {
@@ -98,49 +94,69 @@ export default function Map() {
                 };
 
                 map.addLayer(marker);
-                creationSpotDB();
-                marker.bindPopup();
 
-                return () => clearTimeout(timer);
-            }, 100);
-            // if(marker !== undefined){
-            //     map.removeLayer(marker)
-            // }
+                creationSpotDB();
+
+                console.log("SPOT ADDED");
+                setTest("")
+               
+            }
         };
 
         //   ajoute le marker au double click
         map.on("dblclick", onMapClick);
+
+        console.log("Reload useEffect");
+        console.log( "SPOTS", spots);
     }, [map]);
 
+    const deleteIcon = async (id) => {
+            const spotDoc = doc(db, "smoke_spot", id);
+            console.log(spotDoc);
+            await deleteDoc(spotDoc);
+            setTest("")
+
+    };
+
+    
+
+    console.log("Reload Global");
     //  RETURN ******
 
     return (
         <div className="container">
-            <MapContainer
-                // WHEN CREATED permet d'acceder aux parametres de la map, qu'on place dans un state
-                shadowAnchor={false}
+            <MapContainer               
+                draggable={false}
+                shadowAnchor={true}
                 whenCreated={setMap}
                 center={location}
                 zoom={zoom}
-                zoomControl={false}
+                zoomControl={true}
+                doubleClickZoom={false}
             >
-                {/* LayersControl est le controleur qui change le visuel de la map */}
-                <LayersControl>
-                    <TileLayer
-                        attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                    />
-                    <ZoomControl position="bottomright" />
 
-                    {spots.map((e) => (
-                        <Marker position={[e.lat, e.lng]}>
-                            <Popup>{e.commentaire}</Popup>
-                        </Marker>
-                    ))}
-                </LayersControl>
+                <TileLayer
+                    attribution='&copy; <a href="http://osm.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <ZoomControl position="bottomright" />
+                
 
-                {/* GeoJson utilise une db pour placer des marqueurs */}
-                {/* <GeoJSON data={db} /> */}
+                {spots.map((e, index) => (
+                    <Marker
+                        key={index}
+                        position={[e.lat, e.lng]}
+                        draggable={false}
+                        clickable={true}
+                    >
+                        <Popup>
+                            <button onMouseEnter={(id) => deleteIcon(e.id)}>
+                                delete
+                            </button>
+                            <div>{e.commentaire}</div>
+                        </Popup>
+                    </Marker>
+                ))}
             </MapContainer>
         </div>
     );
