@@ -1,5 +1,6 @@
-import React, { useContext, useEffect, useState} from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { StateContext } from "../context/Context";
+import Card from "./Card";
 import { db } from "../lib/firebase";
 import {
     collection,
@@ -24,8 +25,6 @@ import "leaflet/dist/leaflet.css";
 import "./Map.css";
 
 export default function Map() {
-    
-
     // entree de la db
     const smokeSpotCollection = collection(db, "smoke_spot");
 
@@ -34,15 +33,17 @@ export default function Map() {
     const zoom = 14;
 
     // USE STATE
-    const [commentCard, setCommentCard] = useContext(StateContext)
+    const [
+        card,
+        setCard,
+        addComment,
+        setAddComment,
+        validation,
+        setValidation,
+    ] = useContext(StateContext);
 
     const [map, setMap] = useState(null);
     const [spots, setSpots] = useState([]);
-    const [inputs, setInputs] = useState("");
-    
-    
- 
-
 
     // design icone
 
@@ -65,60 +66,42 @@ export default function Map() {
         };
         getSpots();
 
-        // filtre doublons
-        let filArr = [...spots];
-
-        let uniqueArr = [...new Set(filArr.lat)];
-
-        setSpots(uniqueArr);
-
-        const updateSpots = async () => {
-            const spotDoc = doc(db, "smoke_spot");
-            await updateDoc(spotDoc, uniqueArr);
-        };
-
         // CREATION MARKER DOUBLE CLICK
+       
         const onMapClick = (e) => {
             if (zoom !== 14) {
             } else {
-                let marker = new L.marker(e.latlng);
-                map.addLayer(marker);
-
-                // enregistrement du marker dans la DB
-                const creationSpotDB = async () => {
-                    addDoc(smokeSpotCollection, {
-                        commentaire: "",
-                        lat: marker._latlng.lat,
-                        lng: marker._latlng.lng,
-                    });
-                };
-
-                creationSpotDB();
+                setCard(!card);
+          
+              
             }
-        };
+            
+            
+                    let marker = new L.marker(e.latlng);
+                    map.addLayer(marker);
+                    
+                    
+                    const creationSpotDB = async () => {
+                        addDoc(smokeSpotCollection, {
+                            commentaire: addComment,
+                            lat: marker._latlng.lat,
+                            lng: marker._latlng.lng,
+                        });
+                    };
+                    
+                    creationSpotDB();
+                    setAddComment("");
+                    setValidation(false);
+                };
+                    
+         
+     
 
-        updateSpots();
+        // updateSpots();
 
         //   ajoute le marker au double click
         map.on("dblclick", onMapClick);
     }, [map]);
-
-    // UPDATE COMMENTAIRE
-
-    const handleInput = (el) => {
-        setInputs(el.target.value);
-        console.log(el.target.value);
-    };
-
-    // MOFIC COMMENTAIRE
-    const handleForm = async (id) => {
-        // userDoc définit quel User est sélectionné (db, collection, id )
-        // const inputDoc = setDoc(db, "smoke_spot", el);
-        // const newComm = { commentaire : inputs };
-        // await updateDoc(inputDoc, newComm);
-    };
-
-    // updateComm()
 
     // DELETE ICON
     const deleteIcon = async (id) => {
@@ -130,14 +113,15 @@ export default function Map() {
             window.location.reload(true);
         }, 100);
     };
-    console.log("Reload Global");
+
+  
+
+ 
+
     //  RETURN ******
 
     return (
         <div className="container">
-    
-
-
             <MapContainer
                 draggable={false}
                 shadowAnchor={true}
@@ -169,6 +153,8 @@ export default function Map() {
                     </Marker>
                 ))}
             </MapContainer>
+
+          
         </div>
     );
 }
