@@ -1,15 +1,12 @@
 import React, { useContext, useEffect, useState } from "react";
 import { StateContext } from "../context/Context";
-import Card from "./Card";
 import { db } from "../lib/firebase";
 import {
     collection,
     getDocs,
     addDoc,
-    setDoc,
     doc,
     deleteDoc,
-    updateDoc,
 } from "firebase/firestore";
 
 import {
@@ -21,8 +18,10 @@ import {
 } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-// import { smokeIcon } from "./Icon";
+import locateImg from "../assets/locate.png";
 import "./Map.css";
+
+import { IconSelection } from "../assets/IconSelect";
 
 export default function Map() {
     // entree de la db
@@ -30,7 +29,7 @@ export default function Map() {
 
     // parametres de base
     const location = [35.329523, 139.469281];
-    const zoom = 14;
+    const zoom = 16;
 
     // USE STATE
     const [
@@ -38,21 +37,22 @@ export default function Map() {
         setCard,
         addComment,
         setAddComment,
-        validation,
-        setValidation,
+        positionMarker,
+        setpositionMarker,
     ] = useContext(StateContext);
 
     const [map, setMap] = useState(null);
     const [spots, setSpots] = useState([]);
+    const [color, setColor] = useState(null);
 
     // design icone
 
     delete L.Icon.Default.prototype._getIconUrl;
-    L.Icon.Default.mergeOptions({
-        iconRetinaUrl: require("leaflet/dist/images/marker-icon-2x.png"),
-        iconUrl: require("leaflet/dist/images/marker-icon.png"),
-        shadowUrl: require("leaflet/dist/images/marker-shadow.png"),
-    });
+
+    // LOCATE
+    const locate = () => {
+        map.locate({ setView: true });
+    };
 
     // LECTURE DB ET AFFICHAGE SPOTS
     useEffect(() => {
@@ -65,43 +65,83 @@ export default function Map() {
             setSpots(data.docs.map((doc) => ({ ...doc.data(), id: doc.id })));
         };
         getSpots();
-
-        // CREATION MARKER DOUBLE CLICK
-       
-        const onMapClick = (e) => {
-            if (zoom !== 14) {
-            } else {
-                setCard(!card);
-          
-              
-            }
-            
-            
-                    let marker = new L.marker(e.latlng);
-                    map.addLayer(marker);
-                    
-                    
-                    const creationSpotDB = async () => {
-                        addDoc(smokeSpotCollection, {
-                            commentaire: addComment,
-                            lat: marker._latlng.lat,
-                            lng: marker._latlng.lng,
-                        });
-                    };
-                    
-                    creationSpotDB();
-                    setAddComment("");
-                    setValidation(false);
-                };
-                    
-         
-     
-
-        // updateSpots();
-
         //   ajoute le marker au double click
         map.on("dblclick", onMapClick);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [map]);
+
+    //   CARD LOGIC
+
+    const handleCard = () => {
+        setCard(!card);
+    };
+
+    const handleInput = (e) => {
+        setAddComment(e.target.value);
+    };
+
+    const handleForm = (e) => {
+        e.preventDefault();
+        placingMarker();
+        setCard(!card);
+    };
+    const handleColor = (e) => {
+        if (e.target.value === "") {
+            setColor("red");
+        }
+        setColor(e.target.value);
+    };
+
+    // CHOOSING COLOR MARKER
+
+    const choosingColor = (e) => {
+        if (e.colorIcon === "red") {
+            return IconSelection.red;
+        }
+        if (e.colorIcon === "smoke") {
+            return IconSelection.smoke;
+        } else if (e.colorIcon === "blue") {
+            return IconSelection.blue;
+        } else if (e.colorIcon === "orange") {
+            return IconSelection.orange;
+        } else if (e.colorIcon === "green") {
+            return IconSelection.green;
+        } else {
+            return IconSelection.blue;
+        }
+    };
+
+    // CREATION MARKER DOUBLE CLICK
+
+    const onMapClick = (e) => {
+        setCard(!card);
+        setpositionMarker(e);
+    };
+
+    const placingMarker = () => {
+        const e = positionMarker;
+
+        let marker = new L.marker(e.latlng, { icon: choosingColor(e) });
+        map.addLayer(marker);
+
+        const creationSpotDB = async () => {
+            addDoc(smokeSpotCollection, {
+                commentaire: addComment,
+                lat: marker._latlng.lat,
+                lng: marker._latlng.lng,
+                colorIcon: color,
+            });
+        };
+
+        creationSpotDB();
+        setAddComment("");
+        setpositionMarker("");
+        setColor("");
+
+        setTimeout(() => {
+            window.location.reload(true);
+        }, 100);
+    };
 
     // DELETE ICON
     const deleteIcon = async (id) => {
@@ -114,15 +154,15 @@ export default function Map() {
         }, 100);
     };
 
-  
-
- 
-
     //  RETURN ******
 
     return (
-        <div className="container">
+        <div>
+            <button className="btnLocate" onClick={locate}>
+                <img src={locateImg} alt="locate button" />
+            </button>
             <MapContainer
+                className="MapContainer"
                 draggable={false}
                 shadowAnchor={true}
                 whenCreated={setMap}
@@ -143,18 +183,65 @@ export default function Map() {
                         position={[e.lat, e.lng]}
                         draggable={false}
                         clickable={true}
+                        icon={choosingColor(e)}
+                        // icon={`IconSelection.${e.colorIcon}`}
                     >
-                        <Popup>
-                            <button onClick={(id) => deleteIcon(e.id)}>
-                                delete
+                        <Popup className="popup" closeButton={false}>
+                            <div className="commentSection">
+                                {e.commentaire}
+                            </div>
+                            <button
+                                className="deleteBtn"
+                                onClick={(id) => deleteIcon(e.id)}
+                            >
+                                Delete Icon
                             </button>
-                            <div>{e.commentaire}</div>
                         </Popup>
                     </Marker>
                 ))}
             </MapContainer>
 
-          
+            {/* CARD */}
+
+            {card && (
+                <div className="containerCard">
+                    <div onClick={handleCard} className="overlay"></div>
+                    <form className="cardForm" onSubmit={handleForm}>
+                        <div>
+                            <input
+                                className="cardInput"
+                                onChange={(e) => handleInput(e)}
+                                type="text"
+                                placeholder="Optional : add Comment"
+                            />
+                        </div>
+                        <select
+                            className="select"
+                            onChange={(e) => handleColor(e)}
+                            name="color"
+                            id="colors"
+                            required
+                        >
+                            {" "}
+                            <option value="" selected disabled hidden>
+                                Color Icon
+                            </option>
+                            <option value="smoke">Smoking area</option>
+                            <option value="red">red</option>
+                            <option value="blue">blue</option>
+                            <option value="green">green</option>
+                            <option value="orange">orange</option>
+                        </select>
+
+                        <button
+                            className="btnValidation
+                        "
+                        >
+                            Place marker
+                        </button>
+                    </form>
+                </div>
+            )}
         </div>
     );
 }

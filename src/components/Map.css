@@ -1,9 +1,59 @@
 
-.container {
+
+.MapContainer {
 	position: relative;
 	z-index: 1;
 	width: 100vw;
 	height: 100vh;
+}
+
+/* LOCATE */
+
+.btnLocate {
+	position: absolute;
+	z-index: 10;
+	width: 40px;
+	height: 40px;
+	bottom: 20px;
+	right: 40px;
+	transform: translate(-50%, -50%);
+	background: #F2F2F2;
+	border: none;
+	border-radius: 50%;
+	cursor: pointer;
+}
+.btnLocate img {
+	position: absolute;
+	width: 40px;
+	height: 40px;
+	right: 0px;
+	top: 0px;
+}
+
+/* POPUP */
+
+.popup {
+	display: flex;
+	justify-content: flex-end;
+}
+
+.commentSection {
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 14px;
+	margin: 5px;
+}
+.deleteBtn {
+	background-color: #C82333;
+	border: none;
+	border-radius: 8px;
+	color: #F2F2F2;
+	padding: 5px 7px;
+	font-family: Arial, Helvetica, sans-serif;
+	font-size: 14px;
+	transition: .5s all ease-in-out;
+}
+.deleteBtn:hover {
+	background-color: #a21b29;
 }
 
 
@@ -17,18 +67,21 @@
 	top: 50%;
 	left: 50%;
 	transform: translate(-50%, -50%);
+	font-family: Arial, Helvetica, sans-serif;
 }
 
 .overlay {
 	width: 100%;
 	height: 100%;
 	background: #333;
-	opacity: .5;
+	opacity: .7;
 }
 
-.card {
+.cardForm {
 	position: absolute;
-	width: 200px;
+	display: flex;
+	flex-direction: column;
+	width: 300px;
 	height: auto;
 	background: #F2F2F2;	
 	padding: 15px;
@@ -38,5 +91,45 @@
 	transform: translate(-50%, -50%);
 
 	
+}
+
+.cardInput {
+	width: 250px;
+	height: 20px;
+	border: 1px solid #333;
+	border-radius: 3px;
+}
+::-webkit-input-placeholder {
+	text-align: center;
+ }
+ :-moz-placeholder {
+	text-align: center;
+ }
+
+ .select {
+	 width: 200px;
+	 margin: 20px auto;
+	 text-align: center;
+	 border: 1px solid #333;
+	 border-radius: 3px;
+ }
+
+/* BTN VALIDATION */
+.btnValidation {
+	margin: 10px auto 0;
+	width: 130px;
+	font-size: 14px;
+    padding: 6px 12px;
+	 background-color: #0069D9;
+	 color: #f2f2f2;
+	 border: none;
+	 border-radius: 5px;
+	transition: all .4s ease-in-out;
+}
+.btnValidation:hover {
+	background-color: rgb(0, 98, 202);
+}
+.btnValidation:active{
+	box-shadow: inset 0 3px 5px rgba(0, 98, 202, .125);
 }
 
